@@ -1,0 +1,57 @@
+name: zendpay
+description: "ZendPay — consumer payment pages for zdfi.me"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Routing
+  go_router: ^14.6.2
+
+  # HTTP
+  dio: 5.4.3+1
+
+  # Deep link / URL launch
+  url_launcher: ^6.3.1
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Shared fonts with zendapp
+  fonts:
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/instrumentserif-regular.ttf
+        - asset: assets/fonts/instrumentserif-italic.ttf
+          style: italic
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/DMSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/DMSans-Bold.ttf
+          weight: 700
+    - family: DMMono
+      fonts:
+        - asset: assets/fonts/DMMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/DMMono-Medium.ttf
+          weight: 500
+
+  assets:
+    - assets/fonts/
+    - assets/logo/

@@ -1,0 +1,58 @@
+# ── Flutter / Dart ────────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Build output
+build/
+
+# ── Web build artifacts ───────────────────────────────────────────────────────
+# Vercel / Netlify deploy output lives in build/web — don't commit it
+build/web/
+
+# ── IDE / Editor ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# ── Environment / Secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.*
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Dependency lock (keep pubspec.lock — it ensures reproducible builds) ──────
+# pubspec.lock  ← intentionally NOT ignored
+
+# ── Dart analysis ─────────────────────────────────────────────────────────────
+.dart_tool/
+analysis_options.yaml.bak
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+coverage/
+lcov.info
