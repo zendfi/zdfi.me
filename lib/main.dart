@@ -10,24 +10,24 @@ void main() {
 
 final _router = GoRouter(
   routes: [
-    // PWYW: zdfi.me/@john_o
+    // Fixed-amount request: zdfi.me/john_o/abc123
     GoRoute(
-      path: '/@:zendtag',
-      builder: (context, state) {
-        final zendtag = state.pathParameters['zendtag']!;
-        return PaymentPage(zendtag: zendtag);
-      },
-    ),
-    // Fixed-amount request: zdfi.me/@john_o/abc123
-    GoRoute(
-      path: '/@:zendtag/:requestId',
+      path: '/:zendtag/:requestId',
       builder: (context, state) {
         final zendtag = state.pathParameters['zendtag']!;
         final requestId = state.pathParameters['requestId']!;
         return PaymentPage(zendtag: zendtag, requestId: requestId);
       },
     ),
-    // Fallback
+    // PWYW: zdfi.me/john_o
+    GoRoute(
+      path: '/:zendtag',
+      builder: (context, state) {
+        final zendtag = state.pathParameters['zendtag']!;
+        return PaymentPage(zendtag: zendtag);
+      },
+    ),
+    // Root fallback
     GoRoute(
       path: '/',
       builder: (context, state) => const _NotFoundPage(),
@@ -70,7 +70,7 @@ class _NotFoundPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'This link does not exist.',
+              'This link does not exist!',
               style: TextStyle(
                 fontFamily: 'DMSans',
                 fontSize: 16,

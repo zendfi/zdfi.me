@@ -71,24 +71,21 @@ class _PaymentPageState extends State<PaymentPage> {
     });
 
     try {
-      // Load customisation and link data in parallel
-      final results = await Future.wait([
-        _api.getCustomisation(widget.zendtag),
-        if (widget.requestId != null)
-          _api.getRequestData(widget.zendtag, widget.requestId!)
-        else
-          _api.getUserLinkData(widget.zendtag),
-      ]);
+      // Run both calls — customisation failure is non-fatal, link data failure is fatal
+      final customisation = await _api.getCustomisation(widget.zendtag);
 
-      final customisation = results[0] as PageCustomisation;
-      final linkData = results[1] as Map<String, dynamic>;
+      final Map<String, dynamic> linkData;
+      if (widget.requestId != null) {
+        linkData = await _api.getRequestData(widget.zendtag, widget.requestId!);
+      } else {
+        linkData = await _api.getUserLinkData(widget.zendtag);
+      }
 
       String displayName;
       String countryCode;
       String provider;
 
       if (widget.requestId != null) {
-        // Fixed-amount request
         final user = linkData['user'] as Map<String, dynamic>;
         displayName = customisation.displayNameOverride
             ?? user['display_name'] as String? ?? widget.zendtag;
@@ -97,7 +94,6 @@ class _PaymentPageState extends State<PaymentPage> {
         provider = localOpt?['provider'] as String? ?? '';
         _requestData = PaymentRequestData.fromJson(linkData);
       } else {
-        // PWYW
         final user = linkData['user'] as Map<String, dynamic>;
         displayName = customisation.displayNameOverride
             ?? user['display_name'] as String? ?? widget.zendtag;
@@ -113,9 +109,10 @@ class _PaymentPageState extends State<PaymentPage> {
         _provider = provider;
         _loading = false;
       });
-    } catch (e) {
+    } catch (e, stack) {
+      // Show the real error so we can debug — revert to generic message after fixing
       setState(() {
-        _error = 'This payment link could not be found.';
+        _error = 'Error loading page: $e';
         _loading = false;
       });
     }
@@ -692,7 +689,7 @@ class _CardHeader extends StatelessWidget {
             ),
           ),
           Text(
-            'zdfi.me/@$zendtag',
+            'zdfi.me/$zendtag',
             style: const TextStyle(
               fontFamily: 'DMMono',
               fontSize: 12,
@@ -766,7 +763,7 @@ class _FullHeader extends StatelessWidget {
             ),
           ),
           Text(
-            'zdfi.me/@$zendtag',
+            'zdfi.me/$zendtag',
             style: const TextStyle(
               fontFamily: 'DMMono',
               fontSize: 12,
