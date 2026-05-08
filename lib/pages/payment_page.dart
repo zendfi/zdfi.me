@@ -217,7 +217,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: Column(
@@ -233,12 +233,12 @@ class _PaymentPageState extends State<PaymentPage> {
 
             // Profile header
             _buildProfileHeader(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Payment card
             _buildPaymentCard(),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Footer
             _buildFooter(),
@@ -576,7 +576,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
             ),
             Text(
-              'ZendFi',
+              'Zend!',
               style: TextStyle(
                 fontFamily: 'InstrumentSerif',
                 fontSize: 13,

@@ -46,7 +46,7 @@ class ZendPayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'ZendPay',
+      title: 'Zend!',
       debugShowCheckedModeBanner: false,
       theme: buildZendPayTheme(),
       routerConfig: _router,
@@ -65,7 +65,7 @@ class _NotFoundPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'zdfi.me',
+              'Zend!',
               style: TextStyle(
                 fontFamily: 'InstrumentSerif',
                 fontSize: 32,

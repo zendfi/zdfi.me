@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import '../design/tokens.dart';
 import '../models/page_data.dart';
 
-/// Displays Bridge virtual account / bank transfer details for US/UK/EU/MX/CO.
+/// Displays Bridge bank transfer details for US/UK/EU payments.
+/// Shows only the source deposit instructions (what the payer needs to send)
+/// and the payment rail — nothing else.
 class BridgePaymentDetails extends StatefulWidget {
   const BridgePaymentDetails({
     super.key,
@@ -33,168 +35,254 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
   @override
   Widget build(BuildContext context) {
     final details = widget.localOption.paymentDetails ?? {};
-
-    // Extract Bridge virtual account details
     final bridgeVa = details['bridge_virtual_account'] as Map<String, dynamic>?;
-    final sourceDepositInstructions = bridgeVa?['source_deposit_instructions']
-        ?? details['source_deposit_instructions'];
+
+    // Extract source deposit instructions — check both direct and nested under 'raw'
+    final rawPayload = bridgeVa?['raw'] as Map<String, dynamic>?;
+    final sourceInstructions = (bridgeVa?['source_deposit_instructions']
+        ?? rawPayload?['source_deposit_instructions'])
+        as Map<String, dynamic>?;
+
+    // Extract payment rail from destination
+    final rawDestination = rawPayload?['destination'] as Map<String, dynamic>?;
     final destination = bridgeVa?['destination'] as Map<String, dynamic>?;
+    final paymentRail = (rawDestination?['payment_rail']
+        ?? destination?['payment_rail']
+        ?? bridgeVa?['destination_payment_rail']
+        ?? rawPayload?['source_deposit_instructions']?['payment_rail']
+        ?? widget.localOption.rail) as String;
+    final currency = (rawDestination?['currency']
+        ?? destination?['currency']
+        ?? bridgeVa?['destination_currency']
+        ?? widget.localOption.localCurrency) as String;
+    final amount = widget.localOption.localAmount;
 
-    final rail = destination?['payment_rail']
-        ?? widget.localOption.rail;
-    final currency = destination?['currency']?.toString().toUpperCase()
-        ?? widget.localOption.localCurrency;
-    final address = destination?['address'] as String?;
+    // Rail display label — use source instructions rail if available (e.g. ach_push → ACH)
+    final displayRail = (sourceInstructions?['payment_rail'] as String? ?? paymentRail).toLowerCase();
+    final railLabel = switch (displayRail) {
+      'ach' || 'ach_push' || 'ach_credit' => 'ACH (US Bank Transfer)',
+      'wire' => 'Wire Transfer',
+      'sepa' => 'SEPA (EU Bank Transfer)',
+      'faster_payments' => 'Faster Payments (UK)',
+      'spei' => 'SPEI (Mexico)',
+      _ => displayRail.toUpperCase().replaceAll('_', ' '),
+    };
 
-    final instructionStatus = details['instruction_status'] as String?;
-    // Show details unless explicitly pending/processing — missing status means ready
-    final isCreated = instructionStatus == null ||
-        instructionStatus == 'created' ||
-        instructionStatus == 'active';
-    final isPending = instructionStatus == 'pending' ||
-        instructionStatus == 'processing';
+    if (sourceInstructions == null || sourceInstructions.isEmpty) {
+      return _buildPendingState();
+    }
+
+    final sourceCurrency = (sourceInstructions['currency'] as String? ?? currency).toUpperCase();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Header
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: widget.themeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(ZendRadii.pill),
-              ),
-              child: Text(
-                widget.localOption.provider.toUpperCase(),
-                style: TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: widget.themeColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: ZendColors.bgSecondary,
-                borderRadius: BorderRadius.circular(ZendRadii.pill),
-              ),
-              child: Text(
-                rail.toUpperCase(),
-                style: const TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: ZendColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         Text(
           'Bank transfer details',
           style: const TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'Send ${widget.localOption.localAmount.toStringAsFixed(2)} $currency to complete payment',
+          'Send ${amount.toStringAsFixed(2)} $sourceCurrency via $railLabel',
           style: const TextStyle(
             fontFamily: 'DMSans',
             fontSize: 14,
             color: ZendColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 20),
+
+        // Payment rail badge
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: widget.themeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(ZendRadii.pill),
+              ),
+              child: Text(
+                railLabel,
+                style: TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: widget.themeColor,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
 
-        if (!isCreated && isPending)
-          _buildPendingState()
-        else ...[
-          // Amount + currency
-          _DetailCard(children: [
-            _DetailRow(
-              label: 'Amount',
-              value: '${widget.localOption.localAmount.toStringAsFixed(2)} $currency',
-              copyKey: 'amount',
-              copiedKey: _copiedKey,
-              onCopy: () => _copy('amount',
-                  widget.localOption.localAmount.toStringAsFixed(2)),
+        // Source deposit instructions card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: ZendColors.bgSecondary,
+            borderRadius: BorderRadius.circular(ZendRadii.xl),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Send payment to',
+                style: TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: ZendColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._buildInstructionRows(sourceInstructions),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Important note
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: widget.themeColor.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(ZendRadii.lg),
+            border: Border.all(
+              color: widget.themeColor.withValues(alpha: 0.15),
             ),
-            const Divider(height: 16),
-            _DetailRow(
-              label: 'Rail',
-              value: rail,
-              copyKey: null,
-              copiedKey: _copiedKey,
-              onCopy: null,
-            ),
-            if (address != null) ...[
-              const Divider(height: 16),
-              _DetailRow(
-                label: 'Account / Address',
-                value: address,
-                copyKey: 'address',
-                copiedKey: _copiedKey,
-                onCopy: () => _copy('address', address),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 16, color: widget.themeColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Transfer exactly ${amount.toStringAsFixed(2)} $sourceCurrency. '
+                  'Funds typically arrive within 1–2 business days.',
+                  style: TextStyle(
+                    fontFamily: 'DMSans',
+                    fontSize: 12,
+                    color: widget.themeColor,
+                  ),
+                ),
               ),
             ],
-          ]),
-
-          // Source deposit instructions (raw JSON prettified)
-          if (sourceDepositInstructions != null) ...[
-            const SizedBox(height: 12),
-            _DetailCard(children: [
-              const Text(
-                'DEPOSIT INSTRUCTIONS',
-                style: TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                  color: ZendColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _SourceInstructionsWidget(
-                instructions: sourceDepositInstructions,
-                copiedKey: _copiedKey,
-                onCopy: _copy,
-              ),
-            ]),
-          ] else if (bridgeVa != null) ...[
-            // Fallback: show raw virtual account fields if no deposit instructions
-            const SizedBox(height: 12),
-            _DetailCard(children: [
-              const Text(
-                'VIRTUAL ACCOUNT DETAILS',
-                style: TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                  color: ZendColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _SourceInstructionsWidget(
-                instructions: bridgeVa,
-                copiedKey: _copiedKey,
-                onCopy: _copy,
-              ),
-            ]),
-          ],
-        ],
+          ),
+        ),
       ],
     );
+  }
+
+  List<Widget> _buildInstructionRows(Map<String, dynamic> instructions) {
+    // Priority order for display — show the most important fields first
+    const priorityKeys = [
+      'bank_name',
+      'bank_address',
+      'routing_number',
+      'account_number',
+      'iban',
+      'bic',
+      'swift_code',
+      'sort_code',
+      'account_holder_name',
+      'account_holder_address',
+      'reference',
+      'memo',
+      'payment_reference',
+    ];
+
+    final rows = <Widget>[];
+    final seen = <String>{};
+
+    // Show priority keys first
+    for (final key in priorityKeys) {
+      if (instructions.containsKey(key)) {
+        final value = instructions[key];
+        if (value != null && value.toString().isNotEmpty) {
+          rows.addAll(_buildRow(key, value.toString(), seen));
+        }
+      }
+    }
+
+    // Show remaining keys (skip internal/technical fields)
+    const skipKeys = {
+      'id', 'created_at', 'updated_at', 'bridge_virtual_account_id',
+      'bridge_customer_id', 'status', 'developer_fee_percent',
+    };
+    for (final entry in instructions.entries) {
+      if (!seen.contains(entry.key) && !skipKeys.contains(entry.key)) {
+        final value = entry.value;
+        if (value != null && value.toString().isNotEmpty && value is! Map && value is! List) {
+          rows.addAll(_buildRow(entry.key, value.toString(), seen));
+        }
+      }
+    }
+
+    return rows;
+  }
+
+  List<Widget> _buildRow(String key, String value, Set<String> seen) {
+    seen.add(key);
+    final label = _formatLabel(key);
+    final isCopied = _copiedKey == key;
+
+    return [
+      if (seen.length > 1) const Divider(height: 20, color: ZendColors.border),
+      Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'DMSans',
+                    fontSize: 11,
+                    color: ZendColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'DMMono',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: ZendColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _copy(key, value),
+            child: Icon(
+              isCopied ? Icons.check_circle_outline : Icons.copy_outlined,
+              size: 18,
+              color: isCopied ? ZendColors.positive : ZendColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  String _formatLabel(String key) {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+        .join(' ');
   }
 
   Widget _buildPendingState() {
@@ -226,127 +314,6 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DetailCard extends StatelessWidget {
-  const _DetailCard({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ZendColors.bgSecondary,
-        borderRadius: BorderRadius.circular(ZendRadii.xl),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    required this.copyKey,
-    required this.copiedKey,
-    required this.onCopy,
-  });
-
-  final String label;
-  final String value;
-  final String? copyKey;
-  final String? copiedKey;
-  final VoidCallback? onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    final isCopied = copyKey != null && copiedKey == copyKey;
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'DMSans',
-                  fontSize: 11,
-                  color: ZendColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontFamily: 'DMMono',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: ZendColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (onCopy != null)
-          GestureDetector(
-            onTap: onCopy,
-            child: Icon(
-              isCopied ? Icons.check_circle_outline : Icons.copy_outlined,
-              size: 18,
-              color: isCopied ? ZendColors.positive : ZendColors.textSecondary,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _SourceInstructionsWidget extends StatelessWidget {
-  const _SourceInstructionsWidget({
-    required this.instructions,
-    required this.copiedKey,
-    required this.onCopy,
-  });
-
-  final dynamic instructions;
-  final String? copiedKey;
-  final void Function(String key, String value) onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    if (instructions is Map<String, dynamic>) {
-      final map = instructions as Map<String, dynamic>;
-      return Column(
-        children: map.entries.map((e) {
-          final val = e.value?.toString() ?? '';
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _DetailRow(
-              label: e.key,
-              value: val,
-              copyKey: e.key,
-              copiedKey: copiedKey,
-              onCopy: val.isNotEmpty ? () => onCopy(e.key, val) : null,
-            ),
-          );
-        }).toList(),
-      );
-    }
-    return Text(
-      instructions.toString(),
-      style: const TextStyle(
-        fontFamily: 'DMMono',
-        fontSize: 12,
-        color: ZendColors.textSecondary,
       ),
     );
   }

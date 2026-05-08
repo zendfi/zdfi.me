@@ -234,51 +234,6 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
             ],
           ),
         ),
-
-        const SizedBox(height: 16),
-
-        // Waiting indicator
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: widget.themeColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(ZendRadii.lg),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: widget.themeColor,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Waiting for your transfer... Payment is confirmed automatically.',
-                  style: TextStyle(
-                    fontFamily: 'DMSans',
-                    fontSize: 13,
-                    color: ZendColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 12),
-        const Text(
-          'Transfer usually confirms within 1–5 minutes after sending.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 12,
-            color: ZendColors.textSecondary,
-          ),
-        ),
       ],
     );
   }
