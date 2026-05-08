@@ -37,8 +37,9 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
   }
 
   Future<void> _openInApp() async {
-    // Strip any leading @ defensively — old shared links may include it
     final cleanTag = widget.zendtag.replaceFirst('@', '');
+
+    // Build the custom URI scheme deep link
     final params = <String, String>{
       'zendtag': cleanTag,
       if (widget.requestId != null) 'request_id': widget.requestId!,
@@ -46,23 +47,43 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
         'amount': widget.amountUsdc!.toStringAsFixed(2),
       if (widget.description != null) 'note': widget.description!,
     };
-
     final query = params.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
 
-    final uri = Uri.parse('zendapp://pay?$query');
+    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    if (isIos) {
+      // iOS: try custom scheme directly
+      final uri = Uri.parse('zendapp://pay?$query');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        return;
+      }
+      // Not installed — App Store
+      await launchUrl(
+        Uri.parse('https://apps.apple.com/app/zendapp/id0000000000'),
+        mode: LaunchMode.externalApplication,
+      );
     } else {
-      // App not installed — open Play Store (Android) or App Store (iOS)
-      final isIos = defaultTargetPlatform == TargetPlatform.iOS;
-      final storeUri = Uri.parse(isIos
-          ? 'https://apps.apple.com/app/zendapp/id0000000000' // TODO: replace with real App Store ID
-          : 'https://play.google.com/store/apps/details?id=com.zendfi.zendapp');
-      await launchUrl(storeUri, mode: LaunchMode.externalApplication);
+      // Android: use Intent URL — bypasses Chrome's custom scheme blocking
+      // and falls back to Play Store if app not installed
+      final intentUrl = Uri.parse(
+        'intent://pay?$query'
+        '#Intent;'
+        'scheme=zendapp;'
+        'package=com.zendfi.zendapp;'
+        'S.browser_fallback_url=${Uri.encodeComponent("https://play.google.com/store/apps/details?id=com.zendfi.zendapp")};'
+        'end',
+      );
+      if (await canLaunchUrl(intentUrl)) {
+        await launchUrl(intentUrl, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(
+          Uri.parse('https://play.google.com/store/apps/details?id=com.zendfi.zendapp'),
+          mode: LaunchMode.externalApplication,
+        );
+      }
     }
   }
 

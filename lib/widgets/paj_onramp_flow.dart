@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart' show DioException;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,153 +7,94 @@ import '../design/tokens.dart';
 import '../models/page_data.dart';
 import '../services/api_service.dart';
 
-/// PAJ onramp flow: email → (background OTP verification) → bank details → polling.
+/// PAJ NGN onramp (payin) flow for zdfi.me payment pages.
 ///
-/// Mirrors the OnrampCheckout component from the Next.js checkout but in Flutter.
+/// No email required — the backend handles PAJ session acquisition transparently
+/// via the proxy email pattern. The payer just clicks Pay and gets bank details.
+///
+/// Flow:
+///   1. Show loading while backend acquires PAJ session + creates onramp order (~10-15s)
+///   2. Display bank details (bank name, account number, amount in NGN)
+///   3. Poll for payment confirmation
 class PajOnrampFlow extends StatefulWidget {
   const PajOnrampFlow({
     super.key,
-    required this.checkoutData,
+    required this.zendtag,
+    required this.amountUsd,
     required this.themeColor,
     required this.onSuccess,
+    // Legacy field — kept for API compatibility but not used
+    this.checkoutData,
   });
 
-  final CheckoutData checkoutData;
+  final String zendtag;
+  final double amountUsd;
   final Color themeColor;
   final VoidCallback onSuccess;
+  final CheckoutData? checkoutData;
 
   @override
   State<PajOnrampFlow> createState() => _PajOnrampFlowState();
 }
 
-enum _OnrampStep { email, processing, bankDetails, success }
+enum _OnrampStep { preparing, bankDetails, success, error }
 
 class _PajOnrampFlowState extends State<PajOnrampFlow> {
   final _api = ZendPayApiService();
-  final _emailController = TextEditingController();
 
-  _OnrampStep _step = _OnrampStep.email;
-  bool _loading = false;
+  _OnrampStep _step = _OnrampStep.preparing;
   String? _error;
-  String? _sessionId;
-  OnrampOrder? _order;
   String? _copiedField;
 
+  // Bank details from the prepare response
+  String? _bankName;
+  String? _accountNumber;
+  String? _accountName;
+  double? _fiatAmount;
+  double? _usdcAmount;
+
   Timer? _pollTimer;
-  Timer? _pollTimeout;
-  int _pollAttempts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
     _pollTimer?.cancel();
-    _pollTimeout?.cancel();
     super.dispose();
   }
 
-  Future<void> _submitEmail() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Please enter a valid email address');
-      return;
-    }
-
+  Future<void> _prepare() async {
     setState(() {
-      _loading = true;
+      _step = _OnrampStep.preparing;
       _error = null;
     });
 
     try {
-      final resp = await _api.onrampInitiate(
-        email: email,
-        fiatAmount: widget.checkoutData.amountUsd,
-        paymentLinkId: widget.checkoutData.paymentId,
+      final result = await _api.prepareNgnPayin(
+        zendtag: widget.zendtag,
+        amountUsd: widget.amountUsd,
       );
-      final sessionId = resp['session_id'] as String;
+
+      if (!mounted) return;
       setState(() {
-        _sessionId = sessionId;
-        _step = _OnrampStep.processing;
-        _loading = false;
+        _bankName = result['bank_name'] as String?;
+        _accountNumber = result['account_number'] as String?;
+        _accountName = result['account_name'] as String?;
+        _fiatAmount = (result['fiat_amount'] as num?)?.toDouble();
+        _usdcAmount = (result['usdc_amount'] as num?)?.toDouble();
+        _step = _OnrampStep.bankDetails;
       });
-      _startBackgroundVerification(email, sessionId);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Failed to initiate payment. Please try again.';
-        _loading = false;
+        _error = 'Could not prepare payment. Please try again.';
+        _step = _OnrampStep.error;
       });
     }
-  }
-
-  void _startBackgroundVerification(String email, String sessionId) {
-    _pollAttempts = 0;
-
-    // Timeout after 90 seconds
-    _pollTimeout = Timer(const Duration(seconds: 90), () {
-      _pollTimer?.cancel();
-      if (mounted) {
-        setState(() {
-          _step = _OnrampStep.email;
-          _error = 'Verification timed out. Please try again.';
-        });
-      }
-    });
-
-    // Poll every 3 seconds
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      _pollAttempts++;
-      try {
-        final order = await _api.onrampCreateOrder(
-          email: email,
-          sessionId: sessionId,
-          fiatAmount: widget.checkoutData.amountUsd,
-          paymentLinkId: widget.checkoutData.paymentId,
-        );
-        _pollTimer?.cancel();
-        _pollTimeout?.cancel();
-        if (mounted) {
-          setState(() {
-            _order = order;
-            _step = _OnrampStep.bankDetails;
-          });
-          _startPaymentPolling(order);
-        }
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 202) return; // still processing
-        _pollTimer?.cancel();
-        _pollTimeout?.cancel();
-        if (mounted) {
-          setState(() {
-            _step = _OnrampStep.email;
-            _error = 'Verification failed. Please try again.';
-          });
-        }
-      } catch (_) {
-        // keep polling
-      }
-    });
-  }
-
-  void _startPaymentPolling(OnrampOrder order) {
-    final paymentId = order.paymentId ?? widget.checkoutData.paymentId;
-
-    // Timeout after 15 minutes
-    _pollTimeout = Timer(const Duration(minutes: 15), () {
-      _pollTimer?.cancel();
-    });
-
-    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
-      try {
-        final status = await _api.getPaymentStatus(paymentId);
-        if (status['status'] == 'confirmed') {
-          _pollTimer?.cancel();
-          _pollTimeout?.cancel();
-          if (mounted) {
-            setState(() => _step = _OnrampStep.success);
-            widget.onSuccess();
-          }
-        }
-      } catch (_) {}
-    });
   }
 
   void _copyToClipboard(String text, String field) {
@@ -165,90 +105,38 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
     });
   }
 
+  String _formatNgn(double value) {
+    final rounded = value.round();
+    final text = rounded.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < text.length; i++) {
+      final fromEnd = text.length - i;
+      buf.write(text[i]);
+      if (fromEnd > 1 && fromEnd % 3 == 1) buf.write(',');
+    }
+    return buf.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
       child: switch (_step) {
-        _OnrampStep.email => _buildEmailStep(),
-        _OnrampStep.processing => _buildProcessingStep(),
+        _OnrampStep.preparing => _buildPreparingStep(),
         _OnrampStep.bankDetails => _buildBankDetailsStep(),
         _OnrampStep.success => _buildSuccessStep(),
+        _OnrampStep.error => _buildErrorStep(),
       },
     );
   }
 
-  Widget _buildEmailStep() {
+  Widget _buildPreparingStep() {
     return Column(
-      key: const ValueKey('email'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Enter your email',
-          style: TextStyle(
-            fontFamily: 'InstrumentSerif',
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: ZendColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'We\'ll send your payment receipt here',
-          style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 14,
-            color: ZendColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'your@email.com',
-            prefixIcon: Icon(Icons.mail_outline, size: 18),
-          ),
-          onSubmitted: (_) => _submitEmail(),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            _error!,
-            style: const TextStyle(
-              fontFamily: 'DMSans',
-              fontSize: 13,
-              color: ZendColors.destructive,
-            ),
-          ),
-        ],
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _loading ? null : _submitEmail,
-          style: ElevatedButton.styleFrom(backgroundColor: widget.themeColor),
-          child: _loading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
-              : const Text('Continue'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProcessingStep() {
-    return Column(
-      key: const ValueKey('processing'),
+      key: const ValueKey('preparing'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 24),
-        Center(
-          child: CircularProgressIndicator(color: widget.themeColor),
-        ),
+        Center(child: CircularProgressIndicator(color: widget.themeColor)),
         const SizedBox(height: 20),
         const Text(
           'Preparing payment details...',
@@ -259,9 +147,9 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
             color: ZendColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         const Text(
-          'This takes just a few seconds',
+          'This takes about 10–15 seconds',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
@@ -274,30 +162,36 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
   }
 
   Widget _buildBankDetailsStep() {
-    final order = _order!;
+    final ngn = _fiatAmount != null ? _formatNgn(_fiatAmount!) : '—';
+    final usdc = _usdcAmount != null
+        ? _usdcAmount!.toStringAsFixed(2)
+        : widget.amountUsd.toStringAsFixed(2);
+
     return Column(
       key: const ValueKey('bank'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Complete your transfer',
-          style: TextStyle(
+        Text(
+          'Send ₦$ngn to complete payment',
+          style: const TextStyle(
             fontFamily: 'InstrumentSerif',
             fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
-          'Send ₦${order.fiatAmount.toStringAsFixed(0)} to the account below',
+          'Recipient will receive \$$usdc USDC',
           style: const TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
         const SizedBox(height: 20),
+
+        // Bank details card
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -308,35 +202,42 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
             children: [
               _BankDetailRow(
                 label: 'Bank',
-                value: order.bankName,
+                value: _bankName ?? '—',
                 onCopy: null,
+                copied: false,
               ),
               const Divider(height: 20),
               _BankDetailRow(
                 label: 'Account Name',
-                value: order.bankAccountName,
+                value: _accountName ?? '—',
                 onCopy: null,
+                copied: false,
               ),
               const Divider(height: 20),
               _BankDetailRow(
                 label: 'Account Number',
-                value: order.bankAccountNumber,
+                value: _accountNumber ?? '—',
                 copied: _copiedField == 'account',
-                onCopy: () =>
-                    _copyToClipboard(order.bankAccountNumber, 'account'),
+                onCopy: _accountNumber != null
+                    ? () => _copyToClipboard(_accountNumber!, 'account')
+                    : null,
               ),
               const Divider(height: 20),
               _BankDetailRow(
-                label: 'Amount',
-                value: '₦${order.fiatAmount.toStringAsFixed(0)}',
+                label: 'Amount (NGN)',
+                value: '₦$ngn',
                 copied: _copiedField == 'amount',
-                onCopy: () => _copyToClipboard(
-                    order.fiatAmount.toStringAsFixed(0), 'amount'),
+                onCopy: _fiatAmount != null
+                    ? () => _copyToClipboard(_fiatAmount!.round().toString(), 'amount')
+                    : null,
               ),
             ],
           ),
         ),
+
         const SizedBox(height: 16),
+
+        // Waiting indicator
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -356,7 +257,7 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'Waiting for your transfer...',
+                  'Waiting for your transfer... Payment is confirmed automatically.',
                   style: TextStyle(
                     fontFamily: 'DMSans',
                     fontSize: 13,
@@ -365,6 +266,17 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
                 ),
               ),
             ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+        const Text(
+          'Transfer usually confirms within 1–5 minutes after sending.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 12,
+            color: ZendColors.textSecondary,
           ),
         ),
       ],
@@ -381,7 +293,7 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
           child: Container(
             width: 64,
             height: 64,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: ZendColors.positive,
               shape: BoxShape.circle,
             ),
@@ -401,7 +313,7 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Your payment has been received.',
+          'USDC has been delivered to the recipient\'s wallet.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
@@ -412,14 +324,52 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
       ],
     );
   }
+
+  Widget _buildErrorStep() {
+    return Column(
+      key: const ValueKey('error'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 16),
+        Center(
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: ZendColors.destructive.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.error_outline,
+                color: ZendColors.destructive, size: 36),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          _error ?? 'Something went wrong.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 14,
+            color: ZendColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _prepare,
+          style: ElevatedButton.styleFrom(backgroundColor: widget.themeColor),
+          child: const Text('Try again'),
+        ),
+      ],
+    );
+  }
 }
 
 class _BankDetailRow extends StatelessWidget {
   const _BankDetailRow({
     required this.label,
     required this.value,
-    this.copied = false,
-    this.onCopy,
+    required this.copied,
+    required this.onCopy,
   });
 
   final String label;
@@ -472,9 +422,7 @@ class _BankDetailRow extends StatelessWidget {
                   Icon(
                     copied ? Icons.check : Icons.copy_outlined,
                     size: 14,
-                    color: copied
-                        ? ZendColors.positive
-                        : ZendColors.textSecondary,
+                    color: copied ? ZendColors.positive : ZendColors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -482,9 +430,7 @@ class _BankDetailRow extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'DMSans',
                       fontSize: 12,
-                      color: copied
-                          ? ZendColors.positive
-                          : ZendColors.textSecondary,
+                      color: copied ? ZendColors.positive : ZendColors.textSecondary,
                     ),
                   ),
                 ],

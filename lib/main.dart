@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'design/theme.dart';
 import 'pages/payment_page.dart';
 
 void main() {
+  // Use path-based URLs (e.g. /tnxl) instead of hash-based (/#/tnxl).
+  // Vercel's rewrite rule already sends all paths to index.html.
+  usePathUrlStrategy();
   runApp(const ZendPayApp());
 }
 

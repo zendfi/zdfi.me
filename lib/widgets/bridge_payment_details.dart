@@ -47,7 +47,12 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
     final address = destination?['address'] as String?;
 
     final instructionStatus = details['instruction_status'] as String?;
-    final isCreated = instructionStatus == 'created';
+    // Show details unless explicitly pending/processing — missing status means ready
+    final isCreated = instructionStatus == null ||
+        instructionStatus == 'created' ||
+        instructionStatus == 'active';
+    final isPending = instructionStatus == 'pending' ||
+        instructionStatus == 'processing';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,7 +116,7 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
         ),
         const SizedBox(height: 16),
 
-        if (!isCreated)
+        if (!isCreated && isPending)
           _buildPendingState()
         else ...[
           // Amount + currency
@@ -161,6 +166,27 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
               const SizedBox(height: 8),
               _SourceInstructionsWidget(
                 instructions: sourceDepositInstructions,
+                copiedKey: _copiedKey,
+                onCopy: _copy,
+              ),
+            ]),
+          ] else if (bridgeVa != null) ...[
+            // Fallback: show raw virtual account fields if no deposit instructions
+            const SizedBox(height: 12),
+            _DetailCard(children: [
+              const Text(
+                'VIRTUAL ACCOUNT DETAILS',
+                style: TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                  color: ZendColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _SourceInstructionsWidget(
+                instructions: bridgeVa,
                 copiedKey: _copiedKey,
                 onCopy: _copy,
               ),

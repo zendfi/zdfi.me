@@ -107,4 +107,19 @@ class ZendPayApiService {
     final resp = await _dio.get('/api/v1/payments/$paymentId/status');
     return resp.data as Map<String, dynamic>;
   }
+
+  // ── NGN payin (onramp) ─────────────────────────────────────────────────────
+
+  /// Prepare a PAJ NGN onramp order for a zdfi.me payment page.
+  /// No email required — backend handles PAJ session transparently.
+  Future<Map<String, dynamic>> prepareNgnPayin({
+    required String zendtag,
+    required double amountUsd,
+  }) async {
+    final resp = await _dio.post(
+      '/api/v1/public/zend/$zendtag/ngn-payin/prepare',
+      data: {'amount_usd': amountUsd},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
 }

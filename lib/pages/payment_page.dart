@@ -114,7 +114,7 @@ class _PaymentPageState extends State<PaymentPage> {
         _provider = provider;
         _loading = false;
       });
-    } catch (e, stack) {
+    } catch (e) {
       // Show the real error so we can debug — revert to generic message after fixing
       setState(() {
         _error = 'Error loading page: $e';
@@ -422,10 +422,11 @@ class _PaymentPageState extends State<PaymentPage> {
       return _buildSuccessState();
     }
 
-    // PAJ onramp (NG)
+    // PAJ onramp (NG) — new proxy-email flow, no user email required
     if (localOpt != null && localOpt.isPaj && !localOpt.isBlocked) {
       return PajOnrampFlow(
-        checkoutData: checkout,
+        zendtag: widget.zendtag.replaceFirst('@', ''),
+        amountUsd: checkout.amountUsd,
         themeColor: _themeColor,
         onSuccess: () => setState(() => _paymentSuccess = true),
       );
