@@ -37,8 +37,10 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
   }
 
   Future<void> _openInApp() async {
+    // Strip any leading @ defensively — old shared links may include it
+    final cleanTag = widget.zendtag.replaceFirst('@', '');
     final params = <String, String>{
-      'zendtag': widget.zendtag,
+      'zendtag': cleanTag,
       if (widget.requestId != null) 'request_id': widget.requestId!,
       if (widget.amountUsdc != null)
         'amount': widget.amountUsdc!.toStringAsFixed(2),

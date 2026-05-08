@@ -11,8 +11,8 @@ import '../widgets/zendapp_banner.dart';
 /// The main payment page — rendered for both PWYW and fixed-amount requests.
 ///
 /// URL patterns:
-///   /@{zendtag}              — PWYW
-///   /@{zendtag}/{request_id} — fixed amount
+///   /{zendtag}              — PWYW
+///   /{zendtag}/{request_id} — fixed amount
 class PaymentPage extends StatefulWidget {
   const PaymentPage({
     super.key,
@@ -70,15 +70,19 @@ class _PaymentPageState extends State<PaymentPage> {
       _error = null;
     });
 
+    // Strip any leading @ that may appear in old bookmarked/shared links
+    // e.g. zdfi.me/@blessed → treats zendtag as "@blessed" without this strip
+    final zendtag = widget.zendtag.replaceFirst('@', '');
+
     try {
       // Run both calls — customisation failure is non-fatal, link data failure is fatal
-      final customisation = await _api.getCustomisation(widget.zendtag);
+      final customisation = await _api.getCustomisation(zendtag);
 
       final Map<String, dynamic> linkData;
       if (widget.requestId != null) {
-        linkData = await _api.getRequestData(widget.zendtag, widget.requestId!);
+        linkData = await _api.getRequestData(zendtag, widget.requestId!);
       } else {
-        linkData = await _api.getUserLinkData(widget.zendtag);
+        linkData = await _api.getUserLinkData(zendtag);
       }
 
       String displayName;
@@ -86,18 +90,19 @@ class _PaymentPageState extends State<PaymentPage> {
       String provider;
 
       if (widget.requestId != null) {
-        final user = linkData['user'] as Map<String, dynamic>;
+        final user = (linkData['user'] as Map<String, dynamic>?) ?? {};
         displayName = customisation.displayNameOverride
-            ?? user['display_name'] as String? ?? widget.zendtag;
+            ?? user['display_name'] as String? ?? zendtag;
         final localOpt = linkData['local_payment_option'] as Map<String, dynamic>?;
         countryCode = localOpt?['country_code'] as String? ?? '';
         provider = localOpt?['provider'] as String? ?? '';
         _requestData = PaymentRequestData.fromJson(linkData);
       } else {
-        final user = linkData['user'] as Map<String, dynamic>;
+        final user = (linkData['user'] as Map<String, dynamic>?) ?? {};
         displayName = customisation.displayNameOverride
-            ?? user['display_name'] as String? ?? widget.zendtag;
-        final routing = linkData['routing'] as Map<String, dynamic>;
+            ?? user['display_name'] as String? ?? zendtag;
+        // Null-safe cast — routing may be absent if user has no geo config yet
+        final routing = (linkData['routing'] as Map<String, dynamic>?) ?? {};
         countryCode = routing['country_code'] as String? ?? '';
         provider = routing['provider'] as String? ?? '';
       }
@@ -124,13 +129,14 @@ class _PaymentPageState extends State<PaymentPage> {
       _error = null;
     });
 
+    final zendtag = widget.zendtag.replaceFirst('@', '');
+
     try {
       CheckoutData data;
       if (widget.requestId != null) {
-        data = await _api.createPaymentFromRequest(
-            widget.zendtag, widget.requestId!);
+        data = await _api.createPaymentFromRequest(zendtag, widget.requestId!);
       } else {
-        data = await _api.createPaymentFromUserLink(widget.zendtag, _amountUsd);
+        data = await _api.createPaymentFromUserLink(zendtag, _amountUsd);
       }
       setState(() {
         _checkoutData = data;
@@ -471,7 +477,7 @@ class _PaymentPageState extends State<PaymentPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Your payment to @${widget.zendtag} has been received.',
+          'Your payment to @${widget.zendtag.replaceFirst('@', '')} has been received.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'DMSans',

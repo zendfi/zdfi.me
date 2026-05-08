@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import '../models/page_data.dart';
 
-const _kApiBase = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'https://api-v2.zendfi.tech',
-);
+// API base URL — hardcoded since this is a public web app with a fixed backend.
+// String.fromEnvironment is unreliable in Flutter web builds without explicit
+// --dart-define flags, which Vercel doesn't pass by default.
+const _kApiBase = 'https://api-v2.zendfi.tech';
 
 class ZendPayApiService {
   final Dio _dio;
