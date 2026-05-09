@@ -1,11 +1,11 @@
 {
-  "name": "ZendPay",
-  "short_name": "ZendPay",
+  "name": "Zend!",
+  "short_name": "Zend!",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#FAFAF7",
   "theme_color": "#2D6A4F",
-  "description": "Pay anyone, anywhere with ZendPay.",
+  "description": "Pay anyone, anywhere with Zend!",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

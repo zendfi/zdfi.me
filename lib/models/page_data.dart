@@ -1,4 +1,4 @@
-/// Data models for the ZendPay payment page.
+/// Data models for the Zend! payment page.
 
 class PageCustomisation {
   final String themeColor;
