@@ -135,28 +135,34 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
       key: const ValueKey('preparing'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 24),
-        Center(child: CircularProgressIndicator(color: widget.themeColor)),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        Center(
+          child: CircularProgressIndicator(
+            color: widget.themeColor,
+            strokeWidth: 2,
+          ),
+        ),
+        const SizedBox(height: 14),
         const Text(
           'Preparing payment details...',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 15,
+            fontSize: 14,
             color: ZendColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         const Text(
           'This takes about 10–15 seconds',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 13,
+            fontSize: 12,
             color: ZendColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -175,28 +181,28 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
           'Send ₦$ngn to complete payment',
           style: const TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
-          'Recipient will receive \$$usdc USDC',
+          'Recipient will receive \$$usdc',
           style: const TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 13,
+            fontSize: 12,
             color: ZendColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
 
-        // Bank details card
+        // Bank details card — flat, no shadow
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: ZendColors.bgSecondary,
-            borderRadius: BorderRadius.circular(ZendRadii.xl),
+            borderRadius: BorderRadius.circular(ZendRadii.lg),
           ),
           child: Column(
             children: [
@@ -206,14 +212,14 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
                 onCopy: null,
                 copied: false,
               ),
-              const Divider(height: 20),
+              const Divider(height: 16, color: ZendColors.border),
               _BankDetailRow(
                 label: 'Account Name',
                 value: _accountName ?? '—',
                 onCopy: null,
                 copied: false,
               ),
-              const Divider(height: 20),
+              const Divider(height: 16, color: ZendColors.border),
               _BankDetailRow(
                 label: 'Account Number',
                 value: _accountNumber ?? '—',
@@ -222,7 +228,7 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
                     ? () => _copyToClipboard(_accountNumber!, 'account')
                     : null,
               ),
-              const Divider(height: 20),
+              const Divider(height: 16, color: ZendColors.border),
               _BankDetailRow(
                 label: 'Amount (NGN)',
                 value: '₦$ngn',
@@ -243,39 +249,40 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
       key: const ValueKey('success'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Center(
           child: Container(
-            width: 64,
-            height: 64,
+            width: 52,
+            height: 52,
             decoration: const BoxDecoration(
               color: ZendColors.positive,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check, color: Colors.white, size: 36),
+            child: const Icon(Icons.check, color: Colors.white, size: 28),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         const Text(
           'Payment confirmed!',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         const Text(
-          'USDC has been delivered to the recipient\'s wallet.',
+          'Payment has been delivered to the recipient.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -285,30 +292,30 @@ class _PajOnrampFlowState extends State<PajOnrampFlow> {
       key: const ValueKey('error'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Center(
           child: Container(
-            width: 64,
-            height: 64,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: ZendColors.destructive.withValues(alpha: 0.1),
+              color: ZendColors.destructive.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.error_outline,
-                color: ZendColors.destructive, size: 36),
+                color: ZendColors.destructive, size: 28),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           _error ?? 'Something went wrong.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         ElevatedButton(
           onPressed: _prepare,
           style: ElevatedButton.styleFrom(backgroundColor: widget.themeColor),
@@ -348,12 +355,12 @@ class _BankDetailRow extends StatelessWidget {
                   color: ZendColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 value,
                 style: const TextStyle(
                   fontFamily: 'DMMono',
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: ZendColors.textPrimary,
                 ),
@@ -365,10 +372,10 @@ class _BankDetailRow extends StatelessWidget {
           GestureDetector(
             onTap: onCopy,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
                 color: ZendColors.bgPrimary,
-                borderRadius: BorderRadius.circular(ZendRadii.sm),
+                borderRadius: BorderRadius.circular(ZendRadii.xs),
                 border: Border.all(color: ZendColors.border),
               ),
               child: Row(
@@ -376,15 +383,15 @@ class _BankDetailRow extends StatelessWidget {
                 children: [
                   Icon(
                     copied ? Icons.check : Icons.copy_outlined,
-                    size: 14,
+                    size: 13,
                     color: copied ? ZendColors.positive : ZendColors.textSecondary,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3),
                   Text(
                     copied ? 'Copied' : 'Copy',
                     style: TextStyle(
                       fontFamily: 'DMSans',
-                      fontSize: 12,
+                      fontSize: 11,
                       color: copied ? ZendColors.positive : ZendColors.textSecondary,
                     ),
                   ),

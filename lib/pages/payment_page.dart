@@ -70,12 +70,9 @@ class _PaymentPageState extends State<PaymentPage> {
       _error = null;
     });
 
-    // Strip any leading @ that may appear in old bookmarked/shared links
-    // e.g. zdfi.me/@blessed → treats zendtag as "@blessed" without this strip
     final zendtag = widget.zendtag.replaceFirst('@', '');
 
     try {
-      // Run both calls — customisation failure is non-fatal, link data failure is fatal
       final customisation = await _api.getCustomisation(zendtag);
 
       final Map<String, dynamic> linkData;
@@ -101,7 +98,6 @@ class _PaymentPageState extends State<PaymentPage> {
         final user = (linkData['user'] as Map<String, dynamic>?) ?? {};
         displayName = customisation.displayNameOverride
             ?? user['display_name'] as String? ?? zendtag;
-        // Null-safe cast — routing may be absent if user has no geo config yet
         final routing = (linkData['routing'] as Map<String, dynamic>?) ?? {};
         countryCode = routing['country_code'] as String? ?? '';
         provider = routing['provider'] as String? ?? '';
@@ -115,7 +111,6 @@ class _PaymentPageState extends State<PaymentPage> {
         _loading = false;
       });
     } catch (e) {
-      // Show the real error so we can debug — revert to generic message after fixing
       setState(() {
         _error = 'Error loading page: $e';
         _loading = false;
@@ -176,13 +171,13 @@ class _PaymentPageState extends State<PaymentPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: _themeColor),
-          const SizedBox(height: 16),
+          CircularProgressIndicator(color: _themeColor, strokeWidth: 2),
+          const SizedBox(height: 12),
           const Text(
             'Loading...',
             style: TextStyle(
               fontFamily: 'DMSans',
-              fontSize: 14,
+              fontSize: 13,
               color: ZendColors.textSecondary,
             ),
           ),
@@ -198,14 +193,14 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.link_off, size: 48, color: ZendColors.textSecondary),
-            const SizedBox(height: 16),
+            const Icon(Icons.link_off, size: 40, color: ZendColors.textSecondary),
+            const SizedBox(height: 12),
             Text(
               _error!,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: 'DMSans',
-                fontSize: 16,
+                fontSize: 14,
                 color: ZendColors.textPrimary,
               ),
             ),
@@ -216,33 +211,35 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ZendApp smart banner (mobile only)
-            ZendAppBanner(
-              zendtag: widget.zendtag,
-              requestId: widget.requestId,
-              amountUsdc: _requestData?.amountUsdc ?? _amountUsd,
-              description: _requestData?.description,
-            ),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ZendApp smart banner (mobile only)
+              ZendAppBanner(
+                zendtag: widget.zendtag,
+                requestId: widget.requestId,
+                amountUsdc: _requestData?.amountUsdc ?? _amountUsd,
+                description: _requestData?.description,
+              ),
 
-            // Profile header
-            _buildProfileHeader(),
-            const SizedBox(height: 16),
+              // Profile header
+              _buildProfileHeader(),
+              const SizedBox(height: 10),
 
-            // Payment card
-            _buildPaymentCard(),
+              // Payment card
+              _buildPaymentCard(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            // Footer
-            _buildFooter(),
-          ],
+              // Footer
+              _buildFooter(),
+            ],
+          ),
         ),
       ),
     );
@@ -277,19 +274,14 @@ class _PaymentPageState extends State<PaymentPage> {
     };
   }
 
+  // Flat card — no shadow, tight border, compact padding
   Widget _buildPaymentCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ZendRadii.xxl),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(ZendRadii.xl),
+        border: Border.all(color: ZendColors.border),
       ),
       child: _checkoutData != null
           ? _buildCheckoutFlow()
@@ -299,9 +291,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildPreCheckout() {
     final isRequest = widget.requestId != null;
-    final amount = isRequest
-        ? _requestData?.amountUsdc ?? 0.0
-        : _amountUsd;
+    final amount = isRequest ? _requestData?.amountUsdc ?? 0.0 : _amountUsd;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -312,18 +302,18 @@ class _PaymentPageState extends State<PaymentPage> {
             '\$${amount.toStringAsFixed(2)}',
             style: TextStyle(
               fontFamily: 'InstrumentSerif',
-              fontSize: 48,
+              fontSize: 36,
               fontWeight: FontWeight.w700,
               color: _themeColor,
             ),
           ),
           if (_requestData?.description != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               _requestData!.description!,
               style: const TextStyle(
                 fontFamily: 'DMSans',
-                fontSize: 15,
+                fontSize: 13,
                 color: ZendColors.textSecondary,
               ),
             ),
@@ -334,18 +324,18 @@ class _PaymentPageState extends State<PaymentPage> {
             'Enter amount',
             style: TextStyle(
               fontFamily: 'DMSans',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
               color: ZendColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: TextStyle(
               fontFamily: 'InstrumentSerif',
-              fontSize: 36,
+              fontSize: 30,
               fontWeight: FontWeight.w700,
               color: _themeColor,
             ),
@@ -353,15 +343,17 @@ class _PaymentPageState extends State<PaymentPage> {
               prefixText: '\$ ',
               prefixStyle: TextStyle(
                 fontFamily: 'InstrumentSerif',
-                fontSize: 36,
+                fontSize: 30,
                 fontWeight: FontWeight.w700,
-                color: _themeColor.withValues(alpha: 0.5),
+                color: _themeColor.withValues(alpha: 0.4),
               ),
               hintText: '0.00',
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               filled: false,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
             ),
             onChanged: (v) {
               final parsed = double.tryParse(v);
@@ -372,28 +364,28 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
         ],
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
         // Geo routing info
-        if (_countryCode.isNotEmpty)
+        if (_countryCode.isNotEmpty) ...[
           _GeoRoutingBadge(
             countryCode: _countryCode,
             provider: _provider,
             themeColor: _themeColor,
           ),
-
-        const SizedBox(height: 20),
+          const SizedBox(height: 12),
+        ],
 
         if (_error != null) ...[
           Text(
             _error!,
             style: const TextStyle(
               fontFamily: 'DMSans',
-              fontSize: 13,
+              fontSize: 12,
               color: ZendColors.destructive,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
         ],
 
         ElevatedButton(
@@ -403,12 +395,14 @@ class _PaymentPageState extends State<PaymentPage> {
           style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
           child: _creatingPayment
               ? const SizedBox(
-                  height: 20,
-                  width: 20,
+                  height: 18,
+                  width: 18,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white),
                 )
-              : Text('Pay ${isRequest ? '\$${amount.toStringAsFixed(2)}' : ''}'),
+              : Text(isRequest
+                  ? 'Pay \$${amount.toStringAsFixed(2)}'
+                  : 'Pay'),
         ),
       ],
     );
@@ -422,7 +416,7 @@ class _PaymentPageState extends State<PaymentPage> {
       return _buildSuccessState();
     }
 
-    // PAJ onramp (NG) — new proxy-email flow, no user email required
+    // PAJ onramp (NG)
     if (localOpt != null && localOpt.isPaj && !localOpt.isBlocked) {
       return PajOnrampFlow(
         zendtag: widget.zendtag.replaceFirst('@', ''),
@@ -445,7 +439,6 @@ class _PaymentPageState extends State<PaymentPage> {
       return _buildKycRequired(localOpt);
     }
 
-    // Coming soon / fallback
     return _buildComingSoon();
   }
 
@@ -453,39 +446,40 @@ class _PaymentPageState extends State<PaymentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Center(
           child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
               color: ZendColors.positive,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check, color: Colors.white, size: 36),
+            child: const Icon(Icons.check, color: Colors.white, size: 28),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         const Text(
           'Payment confirmed!',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           'Your payment to @${widget.zendtag.replaceFirst('@', '')} has been received.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -496,30 +490,30 @@ class _PaymentPageState extends State<PaymentPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Icon(Icons.verified_user_outlined,
-            size: 40, color: ZendColors.textSecondary),
-        const SizedBox(height: 12),
+            size: 36, color: ZendColors.textSecondary),
+        const SizedBox(height: 10),
         const Text(
           'Identity verification required',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         const Text(
           'This user needs to complete identity verification before receiving local payments.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
         if (kycLink != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           OutlinedButton(
             onPressed: () async {
               // Open KYC link — user will complete in browser
@@ -535,25 +529,25 @@ class _PaymentPageState extends State<PaymentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.public, size: 40, color: ZendColors.textSecondary),
-        const SizedBox(height: 12),
+        const Icon(Icons.public, size: 36, color: ZendColors.textSecondary),
+        const SizedBox(height: 10),
         const Text(
           'Coming to your country soon',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'InstrumentSerif',
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             color: ZendColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         const Text(
           'Local payment rails are not yet available in your region. Check back soon.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'DMSans',
-            fontSize: 14,
+            fontSize: 13,
             color: ZendColors.textSecondary,
           ),
         ),
@@ -562,33 +556,28 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildFooter() {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Powered by ',
-              style: TextStyle(
-                fontFamily: 'DMSans',
-                fontSize: 12,
-                color: ZendColors.textSecondary,
-              ),
-            ),
-            Text(
-              'Zend!',
-              style: TextStyle(
-                fontFamily: 'InstrumentSerif',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _themeColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
         const Text(
-          'Secure · Global · Instant',
+          'Powered by ',
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 11,
+            color: ZendColors.textSecondary,
+          ),
+        ),
+        Text(
+          'Zend!',
+          style: TextStyle(
+            fontFamily: 'InstrumentSerif',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _themeColor,
+          ),
+        ),
+        const Text(
+          '',
           style: TextStyle(
             fontFamily: 'DMSans',
             fontSize: 11,
@@ -621,7 +610,7 @@ class _MinimalHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Avatar(url: avatarUrl, name: displayName, color: themeColor, radius: 20),
+        _Avatar(url: avatarUrl, name: displayName, color: themeColor, radius: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -631,7 +620,7 @@ class _MinimalHeader extends StatelessWidget {
                 displayName,
                 style: const TextStyle(
                   fontFamily: 'DMSans',
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: ZendColors.textPrimary,
                 ),
@@ -640,7 +629,7 @@ class _MinimalHeader extends StatelessWidget {
                 '@$zendtag',
                 style: const TextStyle(
                   fontFamily: 'DMMono',
-                  fontSize: 12,
+                  fontSize: 11,
                   color: ZendColors.textSecondary,
                 ),
               ),
@@ -652,6 +641,7 @@ class _MinimalHeader extends StatelessWidget {
   }
 }
 
+// Flat card header — no shadow, border only
 class _CardHeader extends StatelessWidget {
   const _CardHeader({
     required this.displayName,
@@ -670,57 +660,59 @@ class _CardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(ZendRadii.xxl),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(ZendRadii.xl),
+        border: Border.all(color: ZendColors.border),
       ),
-      child: Column(
+      child: Row(
         children: [
-          _Avatar(url: avatarUrl, name: displayName, color: themeColor, radius: 32),
-          const SizedBox(height: 12),
-          Text(
-            displayName,
-            style: const TextStyle(
-              fontFamily: 'InstrumentSerif',
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: ZendColors.textPrimary,
+          _Avatar(url: avatarUrl, name: displayName, color: themeColor, radius: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontFamily: 'InstrumentSerif',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: ZendColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'zdfi.me/$zendtag',
+                  style: const TextStyle(
+                    fontFamily: 'DMMono',
+                    fontSize: 11,
+                    color: ZendColors.textSecondary,
+                  ),
+                ),
+                if (bio != null && bio!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    bio!,
+                    style: const TextStyle(
+                      fontFamily: 'DMSans',
+                      fontSize: 12,
+                      color: ZendColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          Text(
-            'zdfi.me/$zendtag',
-            style: const TextStyle(
-              fontFamily: 'DMMono',
-              fontSize: 12,
-              color: ZendColors.textSecondary,
-            ),
-          ),
-          if (bio != null && bio!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              bio!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'DMSans',
-                fontSize: 14,
-                color: ZendColors.textSecondary,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
+// Full gradient header — kept as-is (gradient is intentional identity element),
+// just tightened padding and font sizes
 class _FullHeader extends StatelessWidget {
   const _FullHeader({
     required this.displayName,
@@ -747,48 +739,54 @@ class _FullHeader extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [themeColor, accentColor],
         ),
-        borderRadius: BorderRadius.circular(ZendRadii.xxl),
+        borderRadius: BorderRadius.circular(ZendRadii.xl),
       ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      child: Row(
         children: [
           _Avatar(
             url: avatarUrl,
             name: displayName,
-            color: Colors.white.withValues(alpha: 0.3),
-            radius: 36,
+            color: Colors.white.withValues(alpha: 0.25),
+            radius: 26,
             textColor: Colors.white,
           ),
-          const SizedBox(height: 14),
-          Text(
-            displayName,
-            style: const TextStyle(
-              fontFamily: 'InstrumentSerif',
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontFamily: 'InstrumentSerif',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'zdfi.me/$zendtag',
+                  style: const TextStyle(
+                    fontFamily: 'DMMono',
+                    fontSize: 11,
+                    color: Colors.white70,
+                  ),
+                ),
+                if (bio != null && bio!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    bio!,
+                    style: const TextStyle(
+                      fontFamily: 'DMSans',
+                      fontSize: 12,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          Text(
-            'zdfi.me/$zendtag',
-            style: const TextStyle(
-              fontFamily: 'DMMono',
-              fontSize: 12,
-              color: Colors.white70,
-            ),
-          ),
-          if (bio != null && bio!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              bio!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'DMSans',
-                fontSize: 14,
-                color: Colors.white70,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -855,7 +853,7 @@ class _GeoRoutingBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: themeColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(ZendRadii.pill),
@@ -863,13 +861,13 @@ class _GeoRoutingBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.location_on_outlined, size: 14, color: themeColor),
-          const SizedBox(width: 6),
+          Icon(Icons.location_on_outlined, size: 13, color: themeColor),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               fontFamily: 'DMSans',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
               color: themeColor,
             ),

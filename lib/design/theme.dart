@@ -41,13 +41,15 @@ ThemeData buildZendPayTheme({Color? themeColor, Color? bgColor}) {
       style: ElevatedButton.styleFrom(
         backgroundColor: primary,
         foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 52),
+        minimumSize: const Size(double.infinity, 46),
+        elevation: 0,
+        shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ZendRadii.pill),
         ),
         textStyle: const TextStyle(
           fontFamily: 'DMSans',
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
       ),

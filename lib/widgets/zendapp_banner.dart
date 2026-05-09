@@ -92,8 +92,8 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
     if (_dismissed || !_isMobile) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: ZendColors.bgDeep,
         borderRadius: BorderRadius.circular(ZendRadii.xl),
@@ -125,7 +125,7 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
                   ),
                 ),
                 const Text(
-                  'Pay instantly with your Zend wallet',
+                  'Pay instantly with your Zend!',
                   style: TextStyle(
                     fontFamily: 'DMSans',
                     fontSize: 11,

@@ -57,7 +57,9 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
         ?? widget.localOption.localCurrency) as String;
     final amount = widget.localOption.localAmount;
 
-    // Rail display label — use source instructions rail if available (e.g. ach_push → ACH)
+    // Rail display label — only show payer-meaningful bank rail names.
+    // The fallback sanitizes any crypto/internal rail names that should never
+    // be shown to a payer (e.g. 'solana', 'base', 'usdc').
     final displayRail = (sourceInstructions?['payment_rail'] as String? ?? paymentRail).toLowerCase();
     final railLabel = switch (displayRail) {
       'ach' || 'ach_push' || 'ach_credit' => 'ACH (US Bank Transfer)',
@@ -65,44 +67,53 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
       'sepa' => 'SEPA (EU Bank Transfer)',
       'faster_payments' => 'Faster Payments (UK)',
       'spei' => 'SPEI (Mexico)',
-      _ => displayRail.toUpperCase().replaceAll('_', ' '),
+      _ => _sanitizeRailLabel(displayRail),
     };
 
     if (sourceInstructions == null || sourceInstructions.isEmpty) {
       return _buildPendingState();
     }
 
-    final sourceCurrency = (sourceInstructions['currency'] as String? ?? currency).toUpperCase();
+    // Only show fiat currency codes — never expose crypto token names (USDC, USDT, etc.)
+    // The source instructions currency is what the payer actually sends in their local currency.
+    final rawCurrency = (sourceInstructions['currency'] as String? ?? currency).toUpperCase();
+    final sourceCurrency = _sanitizeCurrency(rawCurrency);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header
-        Text(
-          'Bank transfer details',
-          style: const TextStyle(
-            fontFamily: 'InstrumentSerif',
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: ZendColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Send ${amount.toStringAsFixed(2)} $sourceCurrency via $railLabel',
-          style: const TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 14,
-            color: ZendColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Payment rail badge
+        // Header row — title + rail badge inline
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bank transfer details',
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSerif',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: ZendColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Send ${amount.toStringAsFixed(2)} $sourceCurrency via $railLabel',
+                    style: const TextStyle(
+                      fontFamily: 'DMSans',
+                      fontSize: 12,
+                      color: ZendColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: widget.themeColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(ZendRadii.pill),
@@ -111,7 +122,7 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
                 railLabel,
                 style: TextStyle(
                   fontFamily: 'DMSans',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: widget.themeColor,
                 ),
@@ -119,51 +130,48 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // Source deposit instructions card
+        // Source deposit instructions card — flat
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: ZendColors.bgSecondary,
-            borderRadius: BorderRadius.circular(ZendRadii.xl),
+            borderRadius: BorderRadius.circular(ZendRadii.lg),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Send payment to',
+                'SEND PAYMENT TO',
                 style: TextStyle(
                   fontFamily: 'DMSans',
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                   color: ZendColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               ..._buildInstructionRows(sourceInstructions),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
 
-        // Important note
+        // Info note — flat tinted strip
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: widget.themeColor.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(ZendRadii.lg),
-            border: Border.all(
-              color: widget.themeColor.withValues(alpha: 0.15),
-            ),
+            borderRadius: BorderRadius.circular(ZendRadii.md),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline, size: 16, color: widget.themeColor),
-              const SizedBox(width: 8),
+              Icon(Icons.info_outline, size: 14, color: widget.themeColor),
+              const SizedBox(width: 7),
               Expanded(
                 child: Text(
                   'Transfer exactly ${amount.toStringAsFixed(2)} $sourceCurrency. '
@@ -183,7 +191,6 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
   }
 
   List<Widget> _buildInstructionRows(Map<String, dynamic> instructions) {
-    // Priority order for display — show the most important fields first
     const priorityKeys = [
       'bank_name',
       'bank_address',
@@ -203,7 +210,6 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
     final rows = <Widget>[];
     final seen = <String>{};
 
-    // Show priority keys first
     for (final key in priorityKeys) {
       if (instructions.containsKey(key)) {
         final value = instructions[key];
@@ -213,7 +219,6 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
       }
     }
 
-    // Show remaining keys (skip internal/technical fields)
     const skipKeys = {
       'id', 'created_at', 'updated_at', 'bridge_virtual_account_id',
       'bridge_customer_id', 'status', 'developer_fee_percent',
@@ -236,7 +241,7 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
     final isCopied = _copiedKey == key;
 
     return [
-      if (seen.length > 1) const Divider(height: 20, color: ZendColors.border),
+      if (seen.length > 1) const Divider(height: 16, color: ZendColors.border),
       Row(
         children: [
           Expanded(
@@ -251,12 +256,12 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
                     color: ZendColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   value,
                   style: const TextStyle(
                     fontFamily: 'DMMono',
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: ZendColors.textPrimary,
                   ),
@@ -268,7 +273,7 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
             onTap: () => _copy(key, value),
             child: Icon(
               isCopied ? Icons.check_circle_outline : Icons.copy_outlined,
-              size: 18,
+              size: 16,
               color: isCopied ? ZendColors.positive : ZendColors.textSecondary,
             ),
           ),
@@ -285,30 +290,53 @@ class _BridgePaymentDetailsState extends State<BridgePaymentDetails> {
         .join(' ');
   }
 
+  /// Returns a safe fiat currency code, or 'USD' as fallback.
+  /// Prevents crypto token names (USDC, USDT, SOL, etc.) from surfacing to payers.
+  static String _sanitizeCurrency(String raw) {
+    const knownFiat = {
+      'USD', 'EUR', 'GBP', 'MXN', 'COP', 'NGN', 'CAD', 'AUD',
+      'CHF', 'JPY', 'BRL', 'ARS', 'CLP', 'PEN', 'CRC',
+    };
+    if (knownFiat.contains(raw)) return raw;
+    // Anything not in the fiat allowlist (USDC, USDT, SOL, ETH, etc.) → USD
+    return 'USD';
+  }
+
+  /// Returns a human-readable bank rail label, suppressing any crypto/internal
+  /// rail names that should never be shown to a payer.
+  static String _sanitizeRailLabel(String raw) {
+    const cryptoRails = {
+      'solana', 'sol', 'ethereum', 'eth', 'base', 'polygon', 'matic',
+      'usdc', 'usdt', 'tron', 'trc20', 'erc20', 'spl',
+    };
+    if (cryptoRails.contains(raw)) return 'Bank Transfer';
+    return raw.toUpperCase().replaceAll('_', ' ');
+  }
+
   Widget _buildPendingState() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: ZendColors.bgSecondary,
-        borderRadius: BorderRadius.circular(ZendRadii.xl),
+        borderRadius: BorderRadius.circular(ZendRadii.lg),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 18,
-            height: 18,
+            width: 16,
+            height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               color: widget.themeColor,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           const Expanded(
             child: Text(
               'Preparing transfer instructions...',
               style: TextStyle(
                 fontFamily: 'DMSans',
-                fontSize: 14,
+                fontSize: 13,
                 color: ZendColors.textSecondary,
               ),
             ),
