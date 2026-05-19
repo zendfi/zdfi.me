@@ -46,7 +46,6 @@ class _CryptoDepositSectionState extends State<CryptoDepositSection> {
   String? _txSubmitError;
   final _txHashController = TextEditingController();
   final _searchController = TextEditingController();
-  String _searchQuery = '';
   List<Map<String, dynamic>> _filteredChains = [];
   final _api = ZendPayApiService();
 
@@ -86,7 +85,6 @@ class _CryptoDepositSectionState extends State<CryptoDepositSection> {
     setState(() {
       _selectedChain = chain;
       _step = _CryptoStep.loadingAddress;
-      _searchQuery = '';
       _searchController.clear();
       _filteredChains = _chains;
     });
@@ -245,7 +243,6 @@ class _CryptoDepositSectionState extends State<CryptoDepositSection> {
           ),
           onChanged: (query) {
             setState(() {
-              _searchQuery = query;
               _filteredChains = _chains
                   .where((c) =>
                       c['display_name']
