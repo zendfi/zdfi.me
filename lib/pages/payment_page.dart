@@ -5,6 +5,7 @@ import '../models/page_data.dart';
 import '../services/api_service.dart';
 import '../utils/color_utils.dart';
 import '../widgets/bridge_payment_details.dart';
+import '../widgets/crypto_deposit_section.dart';
 import '../widgets/paj_onramp_flow.dart';
 import '../widgets/zendapp_banner.dart';
 
@@ -51,6 +52,7 @@ class _PaymentPageState extends State<PaymentPage> {
   CheckoutData? _checkoutData;
   bool _creatingPayment = false;
   bool _paymentSuccess = false;
+  bool _showCryptoSection = false;
 
   @override
   void initState() {
@@ -404,6 +406,41 @@ class _PaymentPageState extends State<PaymentPage> {
                   ? 'Pay \$${amount.toStringAsFixed(2)}'
                   : 'Pay'),
         ),
+
+        const SizedBox(height: 16),
+        const Divider(color: ZendColors.border, height: 1),
+        const SizedBox(height: 12),
+        if (!_showCryptoSection)
+          GestureDetector(
+            onTap: () => setState(() => _showCryptoSection = true),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.currency_bitcoin_outlined,
+                    size: 14, color: _themeColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Send crypto instead?',
+                  style: TextStyle(
+                    fontFamily: 'DMSans',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _themeColor,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: CryptoDepositSection(
+              key: const ValueKey('crypto'),
+              zendtag: widget.zendtag.replaceFirst('@', ''),
+              themeColor: _themeColor,
+              amountUsd: _requestData?.amountUsdc ?? _amountUsd,
+            ),
+          ),
       ],
     );
   }

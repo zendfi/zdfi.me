@@ -122,4 +122,36 @@ class ZendPayApiService {
     );
     return resp.data as Map<String, dynamic>;
   }
+
+  // ── Crypto deposit ─────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getSupportedChains() async {
+    final resp = await _dio.get('/api/v1/public/chains');
+    return (resp.data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> getCryptoDepositAddress({
+    required String zendtag,
+    required int chainId,
+  }) async {
+    final resp = await _dio.get(
+      '/api/v1/public/zend/$zendtag/crypto-deposit-address',
+      queryParameters: {'chain_id': chainId},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  /// Submit a payer's on-chain tx hash after sending funds for a one-time
+  /// (non-stablecoin) deposit quote. Dextopus uses this to confirm receipt
+  /// and trigger the bridge to USDC on Solana.
+  Future<void> submitCryptoDepositTx({
+    required String zendtag,
+    required String depositId,
+    required String txHash,
+  }) async {
+    await _dio.post(
+      '/api/v1/public/zend/$zendtag/crypto-deposit/submit',
+      data: {'deposit_id': depositId, 'tx_hash': txHash},
+    );
+  }
 }
