@@ -295,6 +295,41 @@ class _PaymentPageState extends State<PaymentPage> {
     final isRequest = widget.requestId != null;
     final amount = isRequest ? _requestData?.amountUsdc ?? 0.0 : _amountUsd;
 
+    // When crypto section is active, replace the entire card content
+    if (_showCryptoSection) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Back to payment options
+          GestureDetector(
+            onTap: () => setState(() => _showCryptoSection = false),
+            child: Row(
+              children: [
+                Icon(Icons.arrow_back, size: 16, color: _themeColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Back to payment options',
+                  style: TextStyle(
+                    fontFamily: 'DMSans',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _themeColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          CryptoDepositSection(
+            key: const ValueKey('crypto'),
+            zendtag: widget.zendtag.replaceFirst('@', ''),
+            themeColor: _themeColor,
+            amountUsd: _requestData?.amountUsdc ?? _amountUsd,
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -410,37 +445,26 @@ class _PaymentPageState extends State<PaymentPage> {
         const SizedBox(height: 16),
         const Divider(color: ZendColors.border, height: 1),
         const SizedBox(height: 12),
-        if (!_showCryptoSection)
-          GestureDetector(
-            onTap: () => setState(() => _showCryptoSection = true),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.currency_bitcoin_outlined,
-                    size: 14, color: _themeColor),
-                const SizedBox(width: 6),
-                Text(
-                  'Send crypto instead?',
-                  style: TextStyle(
-                    fontFamily: 'DMSans',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: _themeColor,
-                  ),
+        GestureDetector(
+          onTap: () => setState(() => _showCryptoSection = true),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.currency_bitcoin_outlined,
+                  size: 14, color: _themeColor),
+              const SizedBox(width: 6),
+              Text(
+                'Send crypto instead?',
+                style: TextStyle(
+                  fontFamily: 'DMSans',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _themeColor,
                 ),
-              ],
-            ),
-          )
-        else
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: CryptoDepositSection(
-              key: const ValueKey('crypto'),
-              zendtag: widget.zendtag.replaceFirst('@', ''),
-              themeColor: _themeColor,
-              amountUsd: _requestData?.amountUsdc ?? _amountUsd,
-            ),
+              ),
+            ],
           ),
+        ),
       ],
     );
   }
