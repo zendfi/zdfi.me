@@ -1,25 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Primary Meta Tags -->
-  <title>Zend!</title>
-  <meta name="title" content="Zend! — Send money globally">
-  <meta name="description" content="Pay anyone, anywhere with Zend!">
+  <!--
+    Per-user metadata (title, description, og:*, schema.org) is injected by
+    the Vercel Edge Function at api/meta.js before this HTML is served.
+    The tags below are fallbacks for the root page (zdfi.me/) only.
+  -->
 
-  <!-- Open Graph / Facebook -->
+  <!-- Root-page fallback meta — overridden by edge function for user pages -->
+  <title>Zend! — Send money to anyone, anywhere</title>
+  <meta name="description" content="Zend! is the easiest way to send and receive money globally. Get your own payment link at zdfi.me/@you.">
+
+  <!-- Open Graph fallback -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Zend!">
-  <meta property="og:description" content="Pay anyone, anywhere with Zend!">
+  <meta property="og:url" content="https://zdfi.me/">
+  <meta property="og:title" content="Zend! — Send money to anyone, anywhere">
+  <meta property="og:description" content="Zend! is the easiest way to send and receive money globally. Get your own payment link at zdfi.me/@you.">
+  <meta property="og:image" content="https://zdfi.me/icons/og-default.png">
+  <meta property="og:site_name" content="Zend!">
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary">
-  <meta property="twitter:title" content="Zend!">
-  <meta property="twitter:description" content="Pay anyone, anywhere with Zend!">
+  <!-- Twitter Card fallback -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Zend! — Send money to anyone, anywhere">
+  <meta name="twitter:description" content="Zend! is the easiest way to send and receive money globally.">
+
+  <!-- Schema.org for root page -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "url": "https://zdfi.me",
+    "name": "Zend!",
+    "description": "Send and receive money globally with Zend!",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://zdfi.me/{search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
 
   <link rel="icon" type="image/png" href="favicon.png"/>
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
@@ -31,7 +55,7 @@
       background-color: #FAFAF7;
       font-family: 'DMSans', sans-serif;
     }
-    /* Prevent flash of unstyled content */
+    /* Prevent flash of unstyled content while Flutter loads */
     #loading {
       display: flex;
       align-items: center;

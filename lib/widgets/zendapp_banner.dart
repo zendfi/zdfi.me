@@ -39,48 +39,56 @@ class _ZendAppBannerState extends State<ZendAppBanner> {
   Future<void> _openInApp() async {
     final cleanTag = widget.zendtag.replaceFirst('@', '');
 
-    // Build the custom URI scheme deep link
     final params = <String, String>{
-      'zendtag': cleanTag,
       if (widget.requestId != null) 'request_id': widget.requestId!,
       if (widget.amountUsdc != null)
         'amount': widget.amountUsdc!.toStringAsFixed(2),
       if (widget.description != null) 'note': widget.description!,
     };
-    final query = params.entries
-        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
-        .join('&');
+
+    final path = widget.requestId != null
+        ? '/@$cleanTag/${widget.requestId}'
+        : '/@$cleanTag';
+    final query = params.isNotEmpty
+        ? '?${params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&')}'
+        : '';
+    final httpsUrl = 'https://zdfi.me$path$query';
 
     final isIos = defaultTargetPlatform == TargetPlatform.iOS;
 
     if (isIos) {
-      // iOS: try custom scheme directly
-      final uri = Uri.parse('zendapp://pay?$query');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-        return;
-      }
-      // Not installed — App Store
-      await launchUrl(
-        Uri.parse('https://apps.apple.com/app/zendapp/id0000000000'),
-        mode: LaunchMode.externalApplication,
-      );
+      // iOS universal links: if the app is installed, iOS routes it in.
+      // If not, it opens in Safari — from there the user can find the App Store.
+      // For a direct store fallback we'd need a custom scheme, but universal
+      // links are the correct iOS pattern.
+      await launchUrl(Uri.parse(httpsUrl), mode: LaunchMode.externalApplication);
     } else {
-      // Android: use Intent URL — bypasses Chrome's custom scheme blocking
-      // and falls back to Play Store if app not installed
-      final intentUrl = Uri.parse(
-        'intent://pay?$query'
-        '#Intent;'
-        'scheme=zendapp;'
-        'package=com.zendfi.zendapp;'
-        'S.browser_fallback_url=${Uri.encodeComponent("https://play.google.com/store/apps/details?id=com.zendfi.zendapp")};'
-        'end',
+      // Android: use an Intent URL that targets the App Link.
+      // - If the app IS installed: Android routes the https intent directly into
+      //   the app via App Links, bypassing the browser entirely.
+      // - If the app is NOT installed: falls back to the Play Store URL.
+      // This is the correct pattern — custom scheme intents always fall back
+      // to the store even when the app is installed.
+      final playStoreUrl = Uri.encodeComponent(
+        'https://play.google.com/store/apps/details?id=com.zendfi.zendapp',
       );
-      if (await canLaunchUrl(intentUrl)) {
-        await launchUrl(intentUrl, mode: LaunchMode.externalApplication);
+      final intentUrl =
+          'intent:$path$query'
+          '#Intent;'
+          'action=android.intent.action.VIEW;'
+          'scheme=https;'
+          'host=zdfi.me;'
+          'package=com.zendfi.zendapp;'
+          'S.browser_fallback_url=$playStoreUrl;'
+          'end';
+      final uri = Uri.parse(intentUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
+        // canLaunchUrl returned false (e.g. non-Chrome browser that doesn't
+        // support intent:// URLs) — fall back to the plain https link.
         await launchUrl(
-          Uri.parse('https://play.google.com/store/apps/details?id=com.zendfi.zendapp'),
+          Uri.parse(httpsUrl),
           mode: LaunchMode.externalApplication,
         );
       }

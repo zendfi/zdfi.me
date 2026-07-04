@@ -1,25 +1,5 @@
 {
-  "functions": {
-    "api/meta.js": { "runtime": "edge" },
-    "api/sitemap.js": { "runtime": "edge" }
-  },
   "routes": [
-    {
-      "src": "/sitemap\\.xml",
-      "dest": "/api/sitemap.js",
-      "headers": {
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400"
-      },
-      "continue": false
-    },
-    {
-      "src": "/robots\\.txt",
-      "dest": "/robots.txt",
-      "headers": {
-        "Cache-Control": "public, max-age=86400"
-      },
-      "continue": false
-    },
     {
       "src": "/flutter_bootstrap\\.js",
       "dest": "/flutter_bootstrap.js",
@@ -33,8 +13,25 @@
       "continue": false
     },
     {
+      "src": "/flutter_service_worker\\.js",
+      "dest": "/flutter_service_worker.js",
+      "headers": { "Cache-Control": "no-cache" },
+      "continue": false
+    },
+    {
+      "src": "/flutter\\.js",
+      "dest": "/flutter.js",
+      "headers": { "Cache-Control": "no-cache" },
+      "continue": false
+    },
+    {
       "src": "/manifest\\.json",
       "dest": "/manifest.json",
+      "continue": false
+    },
+    {
+      "src": "/robots\\.txt",
+      "dest": "/robots.txt",
       "continue": false
     },
     {
@@ -45,6 +42,11 @@
     {
       "src": "/index\\.html",
       "dest": "/index.html",
+      "continue": false
+    },
+    {
+      "src": "/version\\.json",
+      "dest": "/version.json",
       "continue": false
     },
     {
@@ -62,17 +64,6 @@
     {
       "src": "/canvaskit/(.*)",
       "dest": "/canvaskit/$1",
-      "continue": false
-    },
-    {
-      "src": "/flutter_service_worker\\.js",
-      "dest": "/flutter_service_worker.js",
-      "headers": { "Cache-Control": "no-cache" },
-      "continue": false
-    },
-    {
-      "src": "/(.*)\\.js",
-      "dest": "/$1.js",
       "continue": false
     },
     {

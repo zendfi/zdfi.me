@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Block Flutter's internal asset paths from being indexed
+Disallow: /canvaskit/
+Disallow: /assets/
+Disallow: /flutter_bootstrap.js
+Disallow: /main.dart.js
+
+Sitemap: https://zdfi.me/sitemap.xml
