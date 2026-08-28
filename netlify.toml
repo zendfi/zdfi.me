@@ -1,3 +1,11 @@
+# zkLogin OAuth callback. Must precede the SPA catch-all below, which would
+# otherwise swallow it and serve index.html instead of the handoff page.
+[[redirects]]
+  from = "/auth/callback"
+  to = "/auth/callback.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

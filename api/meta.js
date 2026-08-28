@@ -145,19 +145,38 @@ export default async function handler(request) {
   // Strip leading slash and split
   const segments = pathname.replace(/^\//, '').split('/').filter(Boolean);
 
-  // Must be 1 or 2 segments (zendtag or zendtag/requestId)
-  if (segments.length === 0 || segments.length > 2) {
-    // Let Vercel serve index.html normally
-    return;
+  // Must be 1 or 2 segments and pass the zendtag shape check, otherwise
+  // this isn't a profile/request route (e.g. "/", "/cli-auth/{code}",
+  // "/.well-known/..."). Edge Functions must always return a Response —
+  // a bare `return` (undefined) crashes the invocation — and we can't
+  // `fetch(request)` on the original URL either, since the catch-all
+  // rewrite in vercel.json would route it straight back to this same
+  // function and recurse forever. Serve the plain index.html instead, the
+  // same way the bot-metadata path below fetches it, just without any
+  // metadata injection.
+  const isZendtagRoute =
+    segments.length >= 1 &&
+    segments.length <= 2 &&
+    /^[a-z0-9_]{2,20}$/.test(segments[0].replace(/^@/, '').toLowerCase());
+
+  if (!isZendtagRoute) {
+    const indexUrl = `${url.protocol}//${url.host}/index.html`;
+    const indexResponse = await fetch(indexUrl, {
+      headers: { 'Accept': 'text/html' },
+    });
+    return new Response(await indexResponse.text(), {
+      status: indexResponse.status,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
+    });
   }
 
   const rawZendtag = segments[0].replace(/^@/, '').toLowerCase();
   const requestId = segments[1] || null;
-
-  // Basic zendtag sanity check (alphanumeric + underscore, 2-20 chars)
-  if (!/^[a-z0-9_]{2,20}$/.test(rawZendtag)) {
-    return;
-  }
 
   // Fetch the static index.html directly from Vercel's CDN origin
   // Using an absolute path avoids re-triggering the /(.*) rewrite rule.

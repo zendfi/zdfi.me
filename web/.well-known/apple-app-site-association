@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.zendfi.app.zendapp",
+        "paths": [
+          "/@*",
+          "/u/*",
+          "/cli-auth/*",
+          "/auth/callback",
+          "NOT /favicon.png",
+          "NOT /manifest.json",
+          "NOT /robots.txt",
+          "NOT /sitemap.xml",
+          "NOT /assets/*",
+          "NOT /icons/*",
+          "NOT /canvaskit/*",
+          "NOT /*.js",
+          "NOT /*.wasm",
+          "NOT /.well-known/*"
+        ]
+      }
+    ]
+  }
+}

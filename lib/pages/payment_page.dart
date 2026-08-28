@@ -745,7 +745,7 @@ class _CardHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'zdfi.me/$zendtag',
+                  'zdfi.me/@$zendtag',
                   style: const TextStyle(
                     fontFamily: 'DMMono',
                     fontSize: 11,
@@ -827,7 +827,7 @@ class _FullHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'zdfi.me/$zendtag',
+                  'zdfi.me/@$zendtag',
                   style: const TextStyle(
                     fontFamily: 'DMMono',
                     fontSize: 11,
